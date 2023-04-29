@@ -159,12 +159,9 @@ function onecold(y::AbstractArray, labels = 1:size(y, 1))
   ny = size(y, 1)
   nl == ny || throw(DimensionMismatch("onecold got $nl labels for an array with size(y, 1) == $ny, these must agree"))
   indices = _fast_argmax(y)
-  xs = isbits(labels) ? indices : collect(indices) # non-bit type cannot be handled by CUDA
-
-  return map(xi -> labels[xi[1]], xs)
+  getindex.(Ref(labels), indices)
 end
 
-_fast_argmax(x::AbstractArray) = dropdims(argmax(x; dims = 1); dims = 1)
 _fast_argmax(x::OneHotArray) = _indices(x)
 function _fast_argmax(x::OneHotLike)
   if _isonehot(x)
@@ -172,6 +169,10 @@ function _fast_argmax(x::OneHotLike)
   else
     return _fast_argmax(convert(_onehot_bool_type(x), x))
   end
+end
+function _fast_argmax(x::AbstractArray)
+  cart = dropdims(argmax(x; dims = 1); dims = 1)  # e.g. Matrix{CartesianIndex{2}}
+  map(I -> UInt32(I[1]), cart)  # should be same type as _indices
 end
 
 ChainRulesCore.@non_differentiable onehot(::Any...)
