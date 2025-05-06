@@ -163,6 +163,7 @@ function Base.reduce(::typeof(hcat), xs::AbstractVector{<:OneHotMatrix})
 end
 
 Adapt.adapt_structure(T, x::OneHotArray) = OneHotArray(adapt(T, _indices(x)), x.nlabels)
+Adapt.parent_type(::Type{<:OneHotArray{<:Any, <:Any, <:Any, T}}) where {T} = T
 
 function Base.BroadcastStyle(::Type{<:OneHotArray{<:Any, <:Any, var"N+1", T}}) where {var"N+1", T <: AbstractGPUArray}
   # We want CuArrayStyle{N+1}(). There's an AbstractGPUArrayStyle but it doesn't do what we need.
