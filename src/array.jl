@@ -8,7 +8,7 @@ stored as a compact `N == M-1`-dimensional array of indices.
 Typically constructed by [`onehot`](@ref) and [`onehotbatch`](@ref).
 Parameter `I` is the type of the underlying storage, and `T` its eltype.
 """
-struct OneHotArray{T<:Integer, N, var"N+1", I<:Union{T, AbstractArray{T, N}}} <: AbstractArray{Bool, var"N+1"}
+struct OneHotArray{T, N, var"N+1", I<:Union{T, AbstractArray{T, N}}} <: AbstractArray{Bool, var"N+1"}
   indices::I
   nlabels::Int
 end
@@ -16,16 +16,25 @@ OneHotArray{T, N, I}(indices, L::Int) where {T, N, I} = OneHotArray{T, N, N+1, I
 OneHotArray(indices::T, L::Int) where {T<:Integer} = OneHotArray{T, 0, 1, T}(indices, L)
 OneHotArray(indices::I, L::Int) where {T, N, I<:AbstractArray{T, N}} = OneHotArray{T, N, N+1, I}(indices, L)
 
+OneHotArray(indices::AbstractArray{Bool}, L::Int) =
+    throw(ArgumentError("OneHotArray(indices, L) requires an array of integer indices, not Bool"))
+OneHotArray(indices::AbstractArray{<:CartesianIndex}, L::Int) =
+    throw(ArgumentError("OneHotArray(indices, L) requires an array of integer indices, and does not accept CartesianIndex"))
+OneHotArray(indices::AbstractArray{<:AbstractFloat}, L::Int) =
+    throw(ArgumentError("OneHotArray(indices, L) requires an array of integer indices, not floating point numbers"))
+
 _indices(x::OneHotArray) = x.indices
 _indices(x::Base.ReshapedArray{<:Any, <:Any, <:OneHotArray}) =
   reshape(parent(x).indices, x.dims[2:end])
 
 """
     OneHotVector{T} = OneHotArray{T, 0, 1, T}
-    OneHotVector(indices, L)
+    OneHotVector(index, L)
 
 A one-hot vector with `L` labels (i.e. `length(A) == L` and `count(A) == 1`) typically constructed by [`onehot`](@ref).
 Stored efficiently as a single index of type `T`, usually `UInt32`.
+
+Note that not every `OneHotArray` which is an `AbstractVector` has this type.
 """
 const OneHotVector{T} = OneHotArray{T, 0, 1, T}
 OneHotVector(idx, L) = OneHotArray(idx, L)
@@ -104,9 +113,9 @@ end
 # copy CuArray versions back before trying to print them:
 for fun in (:show, :print_array)  # print_array is used by 3-arg show
   @eval begin
-    Base.$fun(io::IO, X::OneHotLike{T, N, var"N+1", <:AbstractGPUArray}) where {T, N, var"N+1"} = 
+    Base.$fun(io::IO, X::OneHotLike{T, N, var"N+1", <:AbstractGPUArray}) where {T, N, var"N+1"} =
       Base.$fun(io, adapt(Array, X))
-    Base.$fun(io::IO, X::LinearAlgebra.AdjOrTrans{Bool, <:OneHotLike{T, N, <:Any, <:AbstractGPUArray}}) where {T, N} = 
+    Base.$fun(io::IO, X::LinearAlgebra.AdjOrTrans{Bool, <:OneHotLike{T, N, <:Any, <:AbstractGPUArray}}) where {T, N} =
       Base.$fun(io, adapt(Array, X))
   end
 end
